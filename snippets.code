@@ -32,7 +32,8 @@ wfmatrix <- function(N){
 				c(N[length(N)], N[1])
 			}else{
 				c(N[i],N[i+1])
-			}})
+			}
+		})
 		lapply(sizeList, function(sizePair){
 			t(vapply(1:(sizePair[1]+1), function(j) {
 				dbinom(0:sizePair[2], sizePair[2], (j-1)/sizePair[1])
