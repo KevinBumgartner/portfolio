@@ -9,6 +9,6 @@ R and Julia.  If this whets your appetite for more, then you might
 enjoy reading some of the more in-depth files; I'm providing a file
 with some matrix factorization algorithms written in Julia, and a
 file with some self-designing neural network code written in Python,
-a file with some data cleaning and plumbin code written in R, and
+a file with some data cleaning and plumbing code written in R, and
 a directory with several C++ files for a very basic symbolic manipulator
 (computer algebra system) backend.
