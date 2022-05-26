@@ -1,0 +1,153 @@
+# All code contained in this repository is the original work of Kevin Bumgartner.  It is provided
+# here only for demonstration purposes, and it is not provided with any explicit or implicit
+# permission to use the code for any purpose other than demonstration that the code works.
+
+# In this file, you'll find four short blocks of code I've taken from a few
+# projects I've done over the years.  The aim is to show you what I'm capable
+# of writing, not exactly to show you the overall context of the code.  The
+# code snippets are my own original work. They are in R, Julia, and Python.  Each
+# one is introduced with a short paragraph explaining what it does.
+
+# First, I'm showing you a function I wrote in R for a population genetics project.
+# The purpose of this code is to produce a transition probability matrix for
+# a particular type of Markov chain model called the Wright-Fisher model.  The
+# twist, which was the overall purpose of this project, was that I was generalizing
+# the model.  Typically, a transition probability matrix is square, especially
+# for Markov chains.  But here, I've changed the assumptions of the model, to
+# allow it to model allele frequency in a population which changes in size
+# over time.  To make this possible, we allow for non-square tpms.  Try the code
+# out for yourself: if you give this R function a single integer, it will return
+# a square matrix, one which has its entries governed by the rules of the original
+# Wright-Fisher model.  If you instead give it a vector of integers, it will return
+# a list of matrices, each one compatible with its neighbors for multiplication.
+
+wfmatrix <- function(N){
+	if (length(N)==1) {
+		t(vapply(1:(N+1), function(i) {
+			dbinom(0:N, N, (i-1)/N)
+		}, FUN.VALUE=vector(mode='numeric',length=N+1)))
+	}else{
+		sizeList <- lapply(1:length(N), function(i){
+			if (i==length(N)){
+				c(N[length(N)], N[1])
+			}else{
+				c(N[i],N[i+1])
+			}})
+		lapply(sizeList, function(sizePair){
+			t(vapply(1:(sizePair[1]+1), function(j) {
+				dbinom(0:sizePair[2], sizePair[2], (j-1)/sizePair[1])
+			}, FUN.VALUE=vector(mode='numeric',length=sizePair[2]+1)))
+		})
+	}
+}
+
+# Now I'm going to show you some python code I wrote.  This function takes in a neural
+# network model, test data, and test labels.  What it does is it identifies the label
+# which is providing the neural network with the most difficulty in classification.
+# It returns that label and the label which the neural network "sees" as most similar
+# to it.  The intention is to use neural network test accuracy as a metric for optimal
+# data clustering.  The idea behind this is that if further clustering of data doesn't
+# actually offer any advantage, then not doing further clustering leads to a more
+# efficient neural network design, but if further clustering does offer an advantage to
+# a neural network, then it's worth the cost to do that clustering.
+# Of course, it should be used with a nested training set scheme - start by splitting
+# the data into "training", "inner test", and "outer test" sets, then feed this function
+# the inner test set and a neural network model trained on the training set.  If you
+# do this repetitively, changing labels to combine each pair and then training a new
+# neural network on the relabeled training data, iterating until inner test accuracy
+# surpasses some threshold (say 98% accuracy after one epoch), eventually you'll find
+# the optimal clustering scheme.
+# The way this function works is straight forward: use the neural network to get
+# probabilities associated with each label for every item in the test set, then arrange
+# these probabilities in a matrix.  The matrix has one column for each label and one
+# row for each item in the test set.  Multiply this matrix by its own transpose, and you
+# have a square matrix with a row and column for each label.  Scale each row of that
+# matrix by the inverse of the number of observations whose true label is the label
+# corresponding to the row.
+# After this matrix processing, if the neural network is identifying a label with 100%
+# accuracy, then the row corresponding to that label will be all zeroes except on the
+# diagonal, where it will be 1.  If a label is providing some trouble, though, the diagonal
+# of its row will be less than 1.  So identifying the most difficult label is a matter of
+# choosing the row with the smallest diagonal entry; choosing the most similar label, from
+# the perspective of the neural network, is a simple matter of finding the largest entry
+# in the row, except for the diagonal entry.
+# This function depends on the packages numpy (as "np"), tensorflow (as "tf"), and
+# heapq (as "heapq").
+
+def colsToCombine(model, test, labels):
+	probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
+	predictions = probability_model.predict(test)
+	covMat = np.dot(np.transpose(predictions), predictions)
+	totalCols = covMat.shape[0]
+	for i in range(totalCols):
+		if np.sum(labels==i)>0:
+			covMat[i] = covMat[i]/np.sum(labels==i)
+	diags = np.diagonal(covMat)
+	mostDifficultLabel = heapq.nsmallest(1, range(totalCols), diags.take)
+	return heapq.nlargest(2, range(totalCols), covMat[mostDifficultLabel][0].take)
+
+# Next, I'll show you a little R code I wrote to find eigenvalues for a problem in Partial
+# Differential Equations. This R function is for root finding.  Write yourself a function,
+# then pass the name of that function to my function as a string, along with two initial
+# guesses, an error tolerance (epsilon), and a parameter for your function (h).  If your
+# two guesses have a root of the function between them, and if your function is continuous,
+# then this function will find a value within the requested tolerance of the root.  I'm
+# giving you an example where the function we are trying to find the root of is h/tan(x)-x,
+# solving for x such that this is zero, for a parameter of h=5.
+# The way it works is simply by taking the mean of the guesses, checking whether evaluating
+# the function at that mean gives a negative or positive value, then replacing whichever
+# of the original guesses also has that sign with the mean; it iterates this process
+# until it's within the desired tolerance.  Simple but effective.
+
+rootFinder <- function(rooto, guesses, h, epsilon){
+	evalGuesses <- eval(parse(text=paste0(rooto,"(h, guesses)")))
+	if (sum(sign(evalGuesses))==0){
+		meanGuess <- mean(guesses)
+		value <- eval(parse(text=paste0(rooto,"(h, meanGuess)")))
+		while (abs(value)>epsilon && abs(guesses[1]-guesses[2])>epsilon) { 
+			evalGuesses <- eval(parse(text=paste0(rooto,"(h, guesses)")))
+			guesses[which(sign(evalGuesses)==sign(value))] <- meanGuess
+			meanGuess <- mean(guesses)
+			value <- eval(parse(text=paste0(rooto,"(h, meanGuess)")))
+		}
+		meanGuess
+	}else{
+		cat("Evaluated guesses must have opposite sign (there should be a root between the guesses).\n")
+	}
+}
+
+rooto <- function(h,c) h/tan(c)-c
+
+rootFinder("rooto", c(-4,-3), 5, 0.00001)
+
+# Here is code which accomplishes the same task, only it uses a different method of doing
+# it.  This code is written in Julia, as an assignment for a course in Numerical Algorithms.
+# This time, you must provide your function f and its derivative, df.  This function is
+# a straight-forward and simplistic implementation of Newton's method.  The example I'm
+# providing is to find the root of 2x-cos(x), starting with a guess of 1.  This function
+# works better the greater the value of the derivative is at the nearest root to the guess.
+# Provided the derivative isn't zero at that root, the accuracy of the new guess improves
+# exponentially with each iteration (the number of accurate digits at least doubles with each
+# iteration).
+
+f(x)=2*x-cos(x)
+df(x)=2+sin(x)
+
+function g(x)
+    return x-f(x)/df(x)
+end
+
+x=1
+for n=1:10
+    x=g(x)
+    println("x=$x")
+end
+
+
+# If any of the code presented here seems interesting, you may also be interested in viewing
+# the rest of the code in my portfolio.  Here my aim was to present mostly self-contained and
+# short snippets of code.  Larger projects can also be found in this repository, in R, Python,
+# Julia, and C++.
+# All code contained in this repository is the original work of Kevin Bumgartner.  It is provided
+# here only for demonstration purposes, and it is not provided with any explicit or implicit
+# permission to use the code for any purpose other than demonstration that the code works.
