@@ -51,27 +51,32 @@ wfmatrix <- function(N){
 # actually offer any advantage, then not doing further clustering leads to a more
 # efficient neural network design, but if further clustering does offer an advantage to
 # a neural network, then it's worth the cost to do that clustering.
+
 # Of course, it should be used with a nested training set scheme - start by splitting
 # the data into "training", "inner test", and "outer test" sets, then feed this function
 # the inner test set and a neural network model trained on the training set.  If you
-# do this repetitively, changing labels to combine each pair and then training a new
-# neural network on the relabeled training data, iterating until inner test accuracy
-# surpasses some threshold (say 98% accuracy after one epoch), eventually you'll find
-# the optimal clustering scheme.
+# then use this function repetitively, changing labels each time to combine each pair it
+# finds, and then training a new neural network on the relabeled training data, and
+# iterating until inner test accuracy surpasses some threshold (say 98% accuracy after
+# one epoch), eventually you'll find the optimal clustering scheme.
+
 # The way this function works is straight forward: use the neural network to get
 # probabilities associated with each label for every item in the test set, then arrange
 # these probabilities in a matrix.  The matrix has one column for each label and one
 # row for each item in the test set.  Multiply this matrix by its own transpose, and you
-# have a square matrix with a row and column for each label.  Scale each row of that
-# matrix by the inverse of the number of observations whose true label is the label
+# have a square matrix with a row and column for each label.  Finally, scale each row of
+# that matrix by the inverse of the number of observations whose true label is the label
 # corresponding to the row.
+
 # After this matrix processing, if the neural network is identifying a label with 100%
-# accuracy, then the row corresponding to that label will be all zeroes except on the
+# accuracy, then the matrix row corresponding to that label will be all zeroes except on the
 # diagonal, where it will be 1.  If a label is providing some trouble, though, the diagonal
 # of its row will be less than 1.  So identifying the most difficult label is a matter of
-# choosing the row with the smallest diagonal entry; choosing the most similar label, from
+# choosing the row with the smallest diagonal entry. Choosing the most similar label, from
 # the perspective of the neural network, is a simple matter of finding the largest entry
-# in the row, except for the diagonal entry.
+# in the row, except for the diagonal entry.  This matrix method is inspired by the
+# variance-covariance matrix from statistics, although it isn't exactly the same idea.
+
 # This function depends on the packages numpy (as "np"), tensorflow (as "tf"), and
 # heapq (as "heapq").
 
