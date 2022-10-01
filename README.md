@@ -1,6 +1,10 @@
 # portfolio
 A demonstration of coding, algorithmic, and mathematical skills.
 
+***New file added!  As I've learned more about writing in Stata, I've
+decided to showcase a snippet used for reshaping data and exporting
+particular columns as csv files.  See "04-SmallCensus.do".
+
 How to use this repository:
   If you're interested in taking a peek at my code, it might be wise
 to begin by reading the contents of the file "01-Snippets.code" - this
